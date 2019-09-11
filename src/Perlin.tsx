@@ -212,22 +212,28 @@ class Perlin {
         return await this.client.transfer(
             this.keys,
             recipient,
-            amount,
-            gasLimit,
-            gasDeposit
+            Wavelet.Amount(amount),
+            Contract.GasLimit(gasLimit),
+            Contract.GasDeposit(gasDeposit)
         );
     }
 
     public async placeStake(amount: number): Promise<any> {
-        return await this.client.placeStake(this.keys, JSBI.BigInt(amount));
+        return await this.client.placeStake(this.keys, Wavelet.Amount(amount));
     }
 
     public async withdrawStake(amount: number): Promise<any> {
-        return await this.client.withdrawStake(this.keys, JSBI.BigInt(amount));
+        return await this.client.withdrawStake(
+            this.keys,
+            Wavelet.Amount(amount)
+        );
     }
 
     public async withdrawReward(amount: number): Promise<any> {
-        return await this.client.withdrawReward(this.keys, JSBI.BigInt(amount));
+        return await this.client.withdrawReward(
+            this.keys,
+            Wavelet.Amount(amount)
+        );
     }
 
     public async getPerls(address: string) {
@@ -245,14 +251,14 @@ class Perlin {
         bytes: ArrayBuffer,
         gasLimit: JSBI,
         gasDeposit: JSBI = JSBI.BigInt(0),
-        params?: ArrayBuffer
+        params: ArrayBuffer = new Uint8Array([])
     ): Promise<any> {
         return this.client.deployContract(
             this.keys,
             bytes,
-            gasLimit,
-            gasDeposit,
-            params
+            Contract.GasLimit(gasLimit),
+            Contract.GasDeposit(gasDeposit),
+            Contract.Params(params)
         );
     }
 
@@ -461,36 +467,36 @@ class Perlin {
             }
         );
         this.client.pollTransactions(
-            {
-                onTransactionApplied: pushTransactions
-            },
-            { tag: TAG_TRANSFER, creator: this.publicKeyHex }
+            Wavelet.TransactionApplied(pushTransactions),
+            Wavelet.Tag(TAG_TRANSFER),
+            Wavelet.Creator(this.publicKeyHex)
         );
     }
 
     private pollConsensusUpdates() {
-        this.client.pollConsensus({
-            onRoundEnded: (logs: any) => {
-                this.initRound = {
-                    applied: logs.num_applied_tx,
-                    rejected: logs.num_rejected_tx,
-                    depth: logs.round_depth,
-                    start_id: logs.old_root,
-                    end_id: logs.new_root
-                };
-                if (this.onConsensusRound) {
-                    this.onConsensusRound(
-                        logs.num_applied_tx,
-                        logs.num_rejected_tx,
-                        logs.round_depth,
-                        logs.new_round,
-                        logs.old_root,
-                        logs.new_root
-                    );
-                }
-            },
-            onRoundPruned: this.onConsensusPrune
-        });
+        const onRoundEnded = (logs: any) => {
+            this.initRound = {
+                applied: logs.num_applied_tx,
+                rejected: logs.num_rejected_tx,
+                depth: logs.round_depth,
+                start_id: logs.old_root,
+                end_id: logs.new_root
+            };
+            if (this.onConsensusRound) {
+                this.onConsensusRound(
+                    logs.num_applied_tx,
+                    logs.num_rejected_tx,
+                    logs.round_depth,
+                    logs.new_round,
+                    logs.old_root,
+                    logs.new_root
+                );
+            }
+        };
+        this.client.pollConsensus(
+            Wavelet.RoundEnded(onRoundEnded),
+            Wavelet.RoundPruned(this.onConsensusPrune)
+        );
     }
 
     private pollMetricsUpdates() {
@@ -513,25 +519,25 @@ class Perlin {
     }
 
     private pollAccountUpdates(id: string) {
+        const onAccountUpdated = (data: any) => {
+            switch (data.event) {
+                case "balance_updated":
+                    this.account.balance = data.balance.toString();
+                    break;
+                case "stake_updated":
+                    this.account.stake = data.stake;
+                    break;
+                case "reward_updated":
+                    this.account.reward = data.reward;
+                    break;
+                case "num_pages_updated":
+                    this.account.num_mem_pages = data.num_pages;
+            }
+        };
+
         this.client.pollAccounts(
-            {
-                onAccountUpdated: (data: any) => {
-                    switch (data.event) {
-                        case "balance_updated":
-                            this.account.balance = data.balance.toString();
-                            break;
-                        case "stake_updated":
-                            this.account.stake = data.stake;
-                            break;
-                        case "reward_updated":
-                            this.account.reward = data.reward;
-                            break;
-                        case "num_pages_updated":
-                            this.account.num_mem_pages = data.num_pages;
-                    }
-                }
-            },
-            { id }
+            Wavelet.AccountUpdated(onAccountUpdated),
+            Wavelet.Id(id)
         );
     }
 

@@ -255,7 +255,9 @@ const ContractUploader: React.FunctionComponent = () => {
                 if (contractStore.contract.transactionId) {
                     contractStore.waveletContract = new Contract(
                         perlin.client,
-                        contractStore.contract.transactionId
+                        Contract.ContractId(
+                            contractStore.contract.transactionId
+                        )
                     );
                     await contractStore.waveletContract.init();
 
@@ -325,7 +327,7 @@ const ContractUploader: React.FunctionComponent = () => {
 
                     contractStore.waveletContract = new Contract(
                         perlin.client,
-                        tx.id
+                        Contract.ContractId(tx.id)
                     );
                     await contractStore.waveletContract.init();
 

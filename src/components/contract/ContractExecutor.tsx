@@ -23,7 +23,7 @@ import { InlineNotification } from "../common/notification/Notification";
 import GasLimit from "../common/gas-limit/GasLimit";
 import { Link } from "react-router-dom";
 import JSBI from "jsbi";
-import { TAG_TRANSFER } from "wavelet-client";
+import { TAG_TRANSFER, Contract } from "wavelet-client";
 import { TX_FEE } from "src/constants";
 import { DividerInput, Divider, DividerAside } from "../common/dividerInput";
 
@@ -396,8 +396,8 @@ const ContractExecutor: React.FunctionComponent = observer(() => {
             const { result, logs } = contractStore.waveletContract.test(
                 perlin.keys,
                 currFunc,
-                amount,
-                ...params
+                Contract.Amount(amount),
+                Contract.Params(params)
             );
 
             if (result) {
@@ -441,10 +441,10 @@ const ContractExecutor: React.FunctionComponent = observer(() => {
             const response = await contractStore.waveletContract.call(
                 perlin.keys,
                 currFunc,
-                perls,
-                JSBI.subtract(gasLimitNumber, perls),
-                gasDeposit,
-                ...callClonedParamList
+                Contract.Amount(perls),
+                Contract.GasLimit(JSBI.subtract(gasLimitNumber, perls)),
+                Contract.GasDeposit(gasDeposit),
+                Contract.Params(callClonedParamList)
             );
 
             const txId = response.tx_id;

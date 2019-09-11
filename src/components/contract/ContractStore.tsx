@@ -1,7 +1,7 @@
 import { observable } from "mobx";
 import * as Wabt from "wabt";
 import { Perlin } from "../../Perlin";
-import { TAG_TRANSFER } from "wavelet-client";
+import { Wavelet, TAG_TRANSFER } from "wavelet-client";
 import { ITransaction } from "src/types/Transaction";
 
 declare const WebAssembly: any;
@@ -59,28 +59,28 @@ export default class ContractStore {
 
     public listenForApplied(tag: number, txId: string) {
         return new Promise<ITransaction>(async (resolve, reject) => {
+            const onTransactionApplied = (data: any) => {
+                const tx: ITransaction = {
+                    id: data.tx_id,
+                    sender: data.sender_id,
+                    creator: data.creator_id,
+                    depth: data.depth,
+                    tag: data.tag,
+                    status: data.event || "new"
+                };
+                resolve(tx);
+                poll.close();
+            };
+            const onTransactionRejected = (data: any) => {
+                const message = data.error || `Transaction was rejected`;
+                reject(new Error(message));
+                poll.close();
+            };
             const poll = await perlin.client.pollTransactions(
-                {
-                    onTransactionApplied: (data: any) => {
-                        const tx: ITransaction = {
-                            id: data.tx_id,
-                            sender: data.sender_id,
-                            creator: data.creator_id,
-                            depth: data.depth,
-                            tag: data.tag,
-                            status: data.event || "new"
-                        };
-                        resolve(tx);
-                        poll.close();
-                    },
-                    onTransactionRejected: (data: any) => {
-                        const message =
-                            data.error || `Transaction was rejected`;
-                        reject(new Error(message));
-                        poll.close();
-                    }
-                },
-                { tag, id: txId }
+                Wavelet.TransactionApplied(onTransactionApplied),
+                Wavelet.TransactionRejected(onTransactionRejected),
+                Wavelet.Tag(tag),
+                Wavelet.Id(txId)
             );
         });
     }
